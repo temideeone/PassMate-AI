@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and subscription data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "trialStartDate": { "type": "string", "format": "date-time" },
+        "subscriptionStatus": { "type": "string", "enum": ["free", "premium"] },
+        "subscriptionExpiry": { "type": "string", "format": "date-time" },
+        "questionsUsedToday": { "type": "integer" },
+        "lastQuestionDate": { "type": "string", "format": "date-time" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["uid", "email", "subscriptionStatus"]
+    },
+    "ExamResult": {
+      "title": "ExamResult",
+      "description": "Results of practice exams",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "examType": { "type": "string" },
+        "score": { "type": "integer" },
+        "totalQuestions": { "type": "integer" },
+        "date": { "type": "string", "format": "date-time" },
+        "questions": { "type": "array" },
+        "userAnswers": { "type": "array" }
+      },
+      "required": ["uid", "examType", "score", "totalQuestions", "date"]
+    },
+    "StudySchedule": {
+      "title": "StudySchedule",
+      "description": "User's study reminders and exam schedule",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["exam", "reminder"] },
+        "color": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "title", "date", "type"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "User support requests",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string", "format": "email" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "closed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "userName", "userEmail", "subject", "message", "status", "createdAt"]
+    },
+    "AnalyticsEvent": {
+      "title": "AnalyticsEvent",
+      "description": "Detailed usage event tracking",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "event": { "type": "string" },
+        "path": { "type": "string" },
+        "metadata": { "type": "object" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["event", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/exam_results/{resultId}": {
+      "schema": "ExamResult",
+      "description": "Practice exam results"
+    },
+    "/study_schedule/{scheduleId}": {
+      "schema": "StudySchedule",
+      "description": "User's study schedule and reminders"
+    },
+    "/support_tickets/{ticketId}": {
+      "schema": "SupportTicket",
+      "description": "User support requests"
+    },
+    "/analytics_events/{eventId}": {
+      "schema": "AnalyticsEvent",
+      "description": "App usage and feature tracking"
+    }
+  }
+}

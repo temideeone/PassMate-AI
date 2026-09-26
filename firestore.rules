@@ -1,0 +1,169 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==========================================
+    // 0. GLOBAL SAFETY NET
+    // ==========================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ==========================================
+    // BASIC HELPERS
+    // ==========================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && 
+        (request.auth.token.email == "dayosamuel54@gmail.com" || 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin");
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // ==========================================
+    // ENTITY VALIDATION HELPERS
+    // ==========================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'subscriptionStatus']) &&
+        data.uid == request.auth.uid &&
+        data.email is string && data.email.size() <= 256 &&
+        data.subscriptionStatus in ['free', 'premium'] &&
+        (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
+        (!('trialStartDate' in data) || data.trialStartDate is string) &&
+        (!('subscriptionExpiry' in data) || data.subscriptionExpiry is string) &&
+        (!('questionsUsedToday' in data) || data.questionsUsedToday is int) &&
+        (!('lastQuestionDate' in data) || data.lastQuestionDate is string) &&
+        (!('role' in data) || data.role in ['user', 'admin']);
+    }
+
+    function isValidExamResult(data) {
+      return data.keys().hasAll(['uid', 'examType', 'score', 'totalQuestions', 'date']) &&
+        data.uid == request.auth.uid &&
+        data.examType is string && data.examType.size() <= 200 &&
+        data.score is int && data.score >= 0 &&
+        data.totalQuestions is int && data.totalQuestions > 0 &&
+        data.date is string &&
+        (!('questions' in data) || data.questions is list) &&
+        (!('userAnswers' in data) || data.userAnswers is list);
+    }
+
+    function isValidStudySchedule(data) {
+      return data.keys().hasAll(['uid', 'title', 'date', 'type']) &&
+        data.uid == request.auth.uid &&
+        data.title is string && data.title.size() <= 200 &&
+        data.date is string &&
+        data.type in ['exam', 'reminder'] &&
+        (!('color' in data) || (data.color is string && data.color.size() <= 50)) &&
+        (!('createdAt' in data) || data.createdAt is string);
+    }
+
+    function isValidSupportTicket(data) {
+      return data.keys().hasAll(['uid', 'userName', 'userEmail', 'subject', 'message', 'status', 'createdAt']) &&
+        data.uid == request.auth.uid &&
+        data.userName is string && data.userName.size() <= 100 &&
+        data.userEmail is string && data.userEmail.size() <= 256 &&
+        data.subject is string && data.subject.size() <= 200 &&
+        data.message is string && data.message.size() <= 5000 &&
+        data.status in ['open', 'closed'] &&
+        data.createdAt is string;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['uid', 'title', 'message', 'type', 'createdAt', 'read']) &&
+        data.uid == request.auth.uid &&
+        data.title is string && data.title.size() <= 200 &&
+        data.message is string && data.message.size() <= 1000 &&
+        data.type is string &&
+        data.createdAt is string &&
+        data.read is bool;
+    }
+
+    function isValidAnalyticsEvent(data) {
+      return data.keys().hasAll(['event', 'timestamp']) &&
+        data.event is string && data.event.size() <= 100 &&
+        // Looser timestamp check: support server placeholders, timestamps, or strings
+        (data.timestamp != null) &&
+        (!('uid' in data) || (data.uid == request.auth.uid)) &&
+        (!('path' in data) || (data.path is string && data.path.size() <= 500)) &&
+        (!('metadata' in data) || data.metadata is map);
+    }
+
+    // ==========================================
+    // COLLECTION MATCHES
+    // ==========================================
+
+    // Users
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().keys().size() <= 15;
+      allow update: if isOwner(userId) && isValidUser(incoming()) && 
+                    incoming().uid == existing().uid &&
+                    (!incoming().diff(existing()).affectedKeys().hasAny(['role']) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Exam Results
+    match /exam_results/{resultId} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(resultId) && isValidExamResult(incoming()) && incoming().keys().size() <= 7;
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid);
+    }
+
+    // Study Schedule
+    match /study_schedule/{scheduleId} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(scheduleId) && isValidStudySchedule(incoming()) && incoming().keys().size() <= 6;
+      allow update: if (isSignedIn() && existing().uid == request.auth.uid && isValidStudySchedule(incoming()) && incoming().uid == existing().uid) || isAdmin();
+      allow delete: if (isSignedIn() && existing().uid == request.auth.uid) || isAdmin();
+    }
+
+    // Support Tickets
+    match /support_tickets/{ticketId} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(ticketId) && isValidSupportTicket(incoming()) && incoming().keys().size() == 7;
+      allow update: if isAdmin(); // Only admins change status etc
+      allow delete: if isAdmin();
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isAdmin(); // System generated
+      allow update: if (isSignedIn() && existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read'])) || isAdmin();
+      allow delete: if (isSignedIn() && existing().uid == request.auth.uid) || isAdmin();
+    }
+
+    // Analytics Events (Authenticated Create only to prevent spam)
+    match /analytics_events/{eventId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isValidAnalyticsEvent(incoming());
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // System Connection Test
+    match /system/connection_test {
+      allow read: if true;
+    }
+  }
+}

@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  html, body {
+    @apply overflow-x-hidden w-full;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 100%;
+    min-height: 100dvh;
+  }
+  
+  #root {
+    @apply w-full overflow-x-hidden min-h-screen;
+    min-height: 100dvh;
+  }
+
+  img, svg, video, canvas, iframe {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #334155;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}

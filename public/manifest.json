@@ -1,0 +1,19 @@
+{
+  "name": "PassMate AI - Exam Prep & AI Tutor",
+  "short_name": "PassMate AI",
+  "description": "AI-powered EdTech platform to help students pass exams with personalized tutoring, practice tests, and study tools.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#4F46E5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"]
+}
